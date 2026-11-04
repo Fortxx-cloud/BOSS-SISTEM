@@ -22,7 +22,7 @@ app.get('/health', (req, res) => {
     res.json({
         success: true,
         service: 'ZOMA BOSS',
-        version: '4.0.0',
+        version: '4.2.0',
         status: 'online',
         timestamp: new Date().toISOString()
     });
