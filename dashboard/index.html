@@ -1,109 +1,273 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ZOMA BOSS CONTROL</title>
-<style>
-*{box-sizing:border-box}
-body{margin:0;background:#080d17;color:#e8eefc;font-family:Arial,sans-serif;padding:20px}
-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
-h1{letter-spacing:3px;color:#9ebcff}
-small{color:#8d9bb4}
-.panel{background:#111b2c;border:1px solid #243653;border-radius:14px;padding:18px;margin-top:18px}
-input,button{padding:12px;border-radius:8px;border:1px solid #304563;background:#0a1322;color:white}
-button{background:#315bd5;cursor:pointer}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:18px}
-.card{background:#111b2c;border:1px solid #243653;border-radius:12px;padding:18px}
-.value{font-size:28px;font-weight:bold;margin-top:8px}
-.worker{background:#0b1423;padding:16px;border:1px solid #263955;border-radius:12px;margin-top:12px}
-.online{color:#4ade80}.offline{color:#fb7185}
-.bar{height:8px;background:#26344b;border-radius:8px;margin-top:8px;overflow:hidden}
-.fill{height:100%;background:#4e83ff}
-label{display:block;margin-top:12px;color:#9eacc4}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111310">
+<title>ZOMA — Infrastructure Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/dashboard/assets/style.css">
 </head>
 <body>
-<header>
-<div>
-<h1>ZOMA BOSS 🎩</h1>
-<small>Distributed Audio Infrastructure Control</small>
-</div>
-<div id="connection">DISCONNECTED</div>
+
+<div class="shell">
+
+<aside class="sidebar">
+    <div class="brand">
+        <div class="brand-mark">Z</div>
+        <div>
+            <strong>ZOMA</strong>
+            <span>INFRASTRUCTURE</span>
+        </div>
+    </div>
+
+    <div class="side-label">CONTROL</div>
+    <nav>
+        <a href="#overview" class="nav-item active" data-page="overview">
+            <span>◫</span> Overview
+        </a>
+        <a href="#workers" class="nav-item" data-page="workers">
+            <span>▤</span> Workers
+        </a>
+        <a href="#routing" class="nav-item" data-page="routing">
+            <span>⌘</span> Routing
+        </a>
+    </nav>
+
+    <div class="side-bottom">
+        <div class="system-indicator">
+            <span class="pulse"></span>
+            <div>
+                <strong id="side-status">Awaiting connection</strong>
+                <small>BOSS CONTROL PLANE</small>
+            </div>
+        </div>
+        <div class="side-version">ZOMA BOSS / V4.2</div>
+    </div>
+</aside>
+
+<main class="main">
+
+<header class="topbar">
+    <div>
+        <div class="eyebrow">ZOMA SYSTEMS / CONTROL CENTER</div>
+        <h1 id="page-title">Overview</h1>
+    </div>
+
+    <div class="top-actions">
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="connection" id="connection">
+            <span class="status-dot"></span> DISCONNECTED
+        </div>
+        <button class="icon-button" id="refresh-btn" title="Refresh">↻</button>
+    </div>
 </header>
 
-<section class="panel">
-<h3>ADMIN AUTHENTICATION</h3>
-<input id="secret" type="password" placeholder="BOSS API Secret" style="width:min(100%,400px)">
-<button onclick="connect()">CONNECT</button>
+<section class="auth-strip" id="auth-strip">
+    <div>
+        <strong>Administrator access</strong>
+        <span>Connect to the BOSS API to inspect live infrastructure.</span>
+    </div>
+    <div class="auth-controls">
+        <input id="secret" type="password" placeholder="BOSS API secret" autocomplete="current-password">
+        <button id="connect-btn">CONNECT →</button>
+    </div>
 </section>
 
-<div class="grid">
-<div class="card">TOTAL WORKERS<div class="value" id="total">0</div></div>
-<div class="card">ONLINE WORKERS<div class="value" id="online">0</div></div>
-<div class="card">ACTIVE GUILDS<div class="value" id="guilds">0</div></div>
-<div class="card">PENDING<div class="value" id="pending">0</div></div>
+<div id="notice" class="notice hidden"></div>
+
+<section id="overview-page" class="page">
+
+    <div class="section-heading">
+        <div>
+            <div class="eyebrow">SYSTEM SNAPSHOT</div>
+            <h2>Infrastructure overview</h2>
+        </div>
+        <span class="live-label"><i></i> LIVE DATA</span>
+    </div>
+
+    <div class="metrics">
+        <article class="metric">
+            <div class="metric-top"><span>REGISTERED WORKERS</span><span>01</span></div>
+            <div class="metric-value" id="total">—</div>
+            <div class="metric-foot">Total registered agents</div>
+        </article>
+
+        <article class="metric">
+            <div class="metric-top"><span>ONLINE WORKERS</span><span>02</span></div>
+            <div class="metric-value" id="online">—</div>
+            <div class="metric-foot"><span class="green-text">●</span> Reporting online</div>
+        </article>
+
+        <article class="metric">
+            <div class="metric-top"><span>ACTIVE GUILDS</span><span>03</span></div>
+            <div class="metric-value" id="guilds">—</div>
+            <div class="metric-foot">Current routing affinity</div>
+        </article>
+
+        <article class="metric">
+            <div class="metric-top"><span>PENDING RESERVATIONS</span><span>04</span></div>
+            <div class="metric-value" id="pending">—</div>
+            <div class="metric-foot">Awaiting confirmation</div>
+        </article>
+    </div>
+
+    <div class="content-grid">
+        <section class="box">
+            <div class="box-heading">
+                <div>
+                    <div class="eyebrow">RESOURCE MONITOR</div>
+                    <h3>Worker utilization</h3>
+                </div>
+                <span class="subtle">LATEST SAMPLE</span>
+            </div>
+
+            <div class="resource-row">
+                <div><span>CPU LOAD</span><strong id="avg-cpu">—</strong></div>
+                <div class="resource-track"><div id="cpu-bar"></div></div>
+            </div>
+
+            <div class="resource-row">
+                <div><span>MEMORY USAGE</span><strong id="avg-ram">—</strong></div>
+                <div class="resource-track"><div id="ram-bar"></div></div>
+            </div>
+
+            <div class="chart-wrap">
+                <div class="chart-title">
+                    <span>OBSERVED RESOURCE HISTORY</span>
+                    <span>THIS SESSION</span>
+                </div>
+                <canvas id="history-chart"></canvas>
+                <div class="chart-legend">
+                    <span><i class="legend-cpu"></i> CPU</span>
+                    <span><i class="legend-ram"></i> MEMORY</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="box">
+            <div class="box-heading">
+                <div>
+                    <div class="eyebrow">CONTROL PLANE</div>
+                    <h3>System information</h3>
+                </div>
+                <span class="subtle">BOSS / 4.2</span>
+            </div>
+
+            <div class="info-list">
+                <div><span>Service</span><strong>ZOMA BOSS</strong></div>
+                <div><span>API status</span><strong id="api-status">UNKNOWN</strong></div>
+                <div><span>Worker registry</span><strong id="registry-status">UNKNOWN</strong></div>
+                <div><span>Last update</span><strong id="last-update">—</strong></div>
+                <div><span>Refresh interval</span><strong>10 SECONDS</strong></div>
+            </div>
+
+            <div class="system-note">
+                <span class="note-mark">i</span>
+                <p>Metrics are reported by registered Worker Agents. Resource history begins when this dashboard session starts.</p>
+            </div>
+        </section>
+    </div>
+
+    <section class="box worker-preview">
+        <div class="box-heading">
+            <div>
+                <div class="eyebrow">REGISTERED NODES</div>
+                <h3>Worker fleet</h3>
+            </div>
+            <a href="#workers" class="text-link">VIEW ALL →</a>
+        </div>
+        <div id="overview-workers" class="empty-state">
+            Connect to BOSS to load registered workers.
+        </div>
+    </section>
+
+</section>
+
+<section id="workers-page" class="page hidden">
+    <div class="section-heading">
+        <div>
+            <div class="eyebrow">NODE MANAGEMENT</div>
+            <h2>Worker fleet</h2>
+            <p>Registered agents and reported resource utilization.</p>
+        </div>
+        <span class="subtle" id="worker-count">0 NODES</span>
+    </div>
+
+    <section class="box">
+        <div class="table-tools">
+            <input id="worker-search" placeholder="Search worker name or endpoint...">
+            <button id="worker-reload">REFRESH ↻</button>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th>WORKER</th>
+                        <th>STATUS</th>
+                        <th>PLAYERS</th>
+                        <th>CPU</th>
+                        <th>MEMORY</th>
+                        <th>CAPACITY</th>
+                        <th>NODELINK</th>
+                    </tr>
+                </thead>
+                <tbody id="worker-table">
+                    <tr><td colspan="7" class="empty-state">No data loaded.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+
+<section id="routing-page" class="page hidden">
+    <div class="section-heading">
+        <div>
+            <div class="eyebrow">TRAFFIC DISTRIBUTION</div>
+            <h2>Routing overview</h2>
+            <p>Guild affinity and reservation state reported by BOSS.</p>
+        </div>
+    </div>
+
+    <div class="metrics routing-metrics">
+        <article class="metric">
+            <div class="metric-top"><span>ACTIVE GUILDS</span></div>
+            <div class="metric-value" id="route-guilds">—</div>
+        </article>
+        <article class="metric">
+            <div class="metric-top"><span>PENDING RESERVATIONS</span></div>
+            <div class="metric-value" id="route-pending">—</div>
+        </article>
+        <article class="metric">
+            <div class="metric-top"><span>EXPIRED RESERVATIONS</span></div>
+            <div class="metric-value" id="route-expired">—</div>
+        </article>
+    </div>
+
+    <section class="box">
+        <div class="box-heading">
+            <div>
+                <div class="eyebrow">ROUTING STATE</div>
+                <h3>Guild assignments</h3>
+            </div>
+            <span class="subtle">LIVE API DATA</span>
+        </div>
+        <div id="routing-detail" class="empty-state">
+            Connect to BOSS to inspect routing state.
+        </div>
+    </section>
+</section>
+
+<footer>
+    <span>ZOMA SYSTEMS © 2026</span>
+    <span>PRIVATE INFRASTRUCTURE / AUTHORIZED ACCESS ONLY</span>
+</footer>
+
+</main>
 </div>
 
-<section class="panel">
-<h3>WORKER MONITOR</h3>
-<div id="workers">Login untuk melihat Worker.</div>
-</section>
-
-<script>
-let secret=sessionStorage.getItem('boss_secret')||'';
-document.getElementById('secret').value=secret;
-
-async function api(path){
- const response=await fetch(path,{
-  headers:{Authorization:'Bearer '+secret}
- });
- if(!response.ok) throw new Error('API '+response.status);
- return response.json();
-}
-
-async function connect(){
- secret=document.getElementById('secret').value.trim();
- if(!secret)return;
- sessionStorage.setItem('boss_secret',secret);
- await refresh();
-}
-
-function meter(label,value){
- return `<label>${label}: ${value}%</label>
- <div class="bar"><div class="fill" style="width:${Math.max(0,Math.min(100,value))}%"></div></div>`;
-}
-
-async function refresh(){
- try{
-  const [w,s]=await Promise.all([
-   api('/api/workers'),
-   api('/api/balancer/sessions')
-  ]);
-
-  document.getElementById('connection').innerHTML='<span class="online">● CONNECTED</span>';
-  document.getElementById('total').textContent=w.total;
-  document.getElementById('online').textContent=w.workers.filter(x=>x.status==='online').length;
-  document.getElementById('guilds').textContent=s.routing.activeGuilds;
-  document.getElementById('pending').textContent=s.routing.pendingReservations;
-
-  document.getElementById('workers').innerHTML=w.workers.map(x=>`
-   <div class="worker">
-    <b>${x.name}</b>
-    <span class="${x.status==='online'?'online':'offline'}"> ● ${x.status.toUpperCase()}</span>
-    <p><small>${x.endpoint}</small></p>
-    <p>Players: ${x.players} | Guilds: ${x.activeGuilds??'-'} | Capacity: ${x.capacity}</p>
-    ${meter('CPU',x.cpu)}
-    ${meter('RAM',x.memory)}
-    <p><small>NodeLink: ${x.nodeHealthy===false?'UNHEALTHY':'REPORTED HEALTHY'}</small></p>
-   </div>`).join('');
- }catch(e){
-  document.getElementById('connection').innerHTML='<span class="offline">● ERROR: '+e.message+'</span>';
- }
-}
-
-setInterval(()=>{if(secret)refresh()},10000);
-if(secret)refresh();
-</script>
+<script src="/dashboard/assets/app.js" defer></script>
 </body>
 </html>

@@ -28,6 +28,8 @@ app.get('/health', (req, res) => {
     });
 });
 
+app.use('/dashboard/assets', express.static(path.resolve('dashboard/assets')));
+
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.resolve('dashboard/index.html'));
 });
