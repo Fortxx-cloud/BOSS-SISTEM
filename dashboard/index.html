@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZOMA BOSS CONTROL</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d17;color:#e8eefc;font-family:Arial,sans-serif;padding:20px}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+h1{letter-spacing:3px;color:#9ebcff}
+small{color:#8d9bb4}
+.panel{background:#111b2c;border:1px solid #243653;border-radius:14px;padding:18px;margin-top:18px}
+input,button{padding:12px;border-radius:8px;border:1px solid #304563;background:#0a1322;color:white}
+button{background:#315bd5;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:18px}
+.card{background:#111b2c;border:1px solid #243653;border-radius:12px;padding:18px}
+.value{font-size:28px;font-weight:bold;margin-top:8px}
+.worker{background:#0b1423;padding:16px;border:1px solid #263955;border-radius:12px;margin-top:12px}
+.online{color:#4ade80}.offline{color:#fb7185}
+.bar{height:8px;background:#26344b;border-radius:8px;margin-top:8px;overflow:hidden}
+.fill{height:100%;background:#4e83ff}
+label{display:block;margin-top:12px;color:#9eacc4}
+</style>
+</head>
+<body>
+<header>
+<div>
+<h1>ZOMA BOSS 🎩</h1>
+<small>Distributed Audio Infrastructure Control</small>
+</div>
+<div id="connection">DISCONNECTED</div>
+</header>
+
+<section class="panel">
+<h3>ADMIN AUTHENTICATION</h3>
+<input id="secret" type="password" placeholder="BOSS API Secret" style="width:min(100%,400px)">
+<button onclick="connect()">CONNECT</button>
+</section>
+
+<div class="grid">
+<div class="card">TOTAL WORKERS<div class="value" id="total">0</div></div>
+<div class="card">ONLINE WORKERS<div class="value" id="online">0</div></div>
+<div class="card">ACTIVE GUILDS<div class="value" id="guilds">0</div></div>
+<div class="card">PENDING<div class="value" id="pending">0</div></div>
+</div>
+
+<section class="panel">
+<h3>WORKER MONITOR</h3>
+<div id="workers">Login untuk melihat Worker.</div>
+</section>
+
+<script>
+let secret=sessionStorage.getItem('boss_secret')||'';
+document.getElementById('secret').value=secret;
+
+async function api(path){
+ const response=await fetch(path,{
+  headers:{Authorization:'Bearer '+secret}
+ });
+ if(!response.ok) throw new Error('API '+response.status);
+ return response.json();
+}
+
+async function connect(){
+ secret=document.getElementById('secret').value.trim();
+ if(!secret)return;
+ sessionStorage.setItem('boss_secret',secret);
+ await refresh();
+}
+
+function meter(label,value){
+ return `<label>${label}: ${value}%</label>
+ <div class="bar"><div class="fill" style="width:${Math.max(0,Math.min(100,value))}%"></div></div>`;
+}
+
+async function refresh(){
+ try{
+  const [w,s]=await Promise.all([
+   api('/api/workers'),
+   api('/api/balancer/sessions')
+  ]);
+
+  document.getElementById('connection').innerHTML='<span class="online">● CONNECTED</span>';
+  document.getElementById('total').textContent=w.total;
+  document.getElementById('online').textContent=w.workers.filter(x=>x.status==='online').length;
+  document.getElementById('guilds').textContent=s.routing.activeGuilds;
+  document.getElementById('pending').textContent=s.routing.pendingReservations;
+
+  document.getElementById('workers').innerHTML=w.workers.map(x=>`
+   <div class="worker">
+    <b>${x.name}</b>
+    <span class="${x.status==='online'?'online':'offline'}"> ● ${x.status.toUpperCase()}</span>
+    <p><small>${x.endpoint}</small></p>
+    <p>Players: ${x.players} | Guilds: ${x.activeGuilds??'-'} | Capacity: ${x.capacity}</p>
+    ${meter('CPU',x.cpu)}
+    ${meter('RAM',x.memory)}
+    <p><small>NodeLink: ${x.nodeHealthy===false?'UNHEALTHY':'REPORTED HEALTHY'}</small></p>
+   </div>`).join('');
+ }catch(e){
+  document.getElementById('connection').innerHTML='<span class="offline">● ERROR: '+e.message+'</span>';
+ }
+}
+
+setInterval(()=>{if(secret)refresh()},10000);
+if(secret)refresh();
+</script>
+</body>
+</html>
