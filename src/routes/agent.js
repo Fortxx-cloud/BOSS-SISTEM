@@ -2,6 +2,9 @@ import { Router } from 'express';
 import crypto from 'node:crypto';
 
 import { config } from '../core/config.js';
+import { createTaskQueue } from '../services/task-queue.js';
+
+const taskQueue = createTaskQueue();
 
 import {
     registerAgentWorker,
@@ -114,6 +117,126 @@ router.get('/:id', (req, res) => {
         success: true,
         worker: publicWorker(worker)
     });
+});
+
+
+// Worker Task Queue API
+router.post('/tasks/claim', async (req, res, next) => {
+    try {
+        const authorization = req.headers.authorization || '';
+        const [scheme, token] = authorization.split(' ');
+        const workerId = req.body?.workerId;
+
+        if (
+            !workerId ||
+            scheme !== 'Bearer' ||
+            !authenticateWorkerToken(workerId, token)
+        ) {
+            return res.status(403).json({
+                success: false,
+                error: 'INVALID_WORKER_TOKEN'
+            });
+        }
+
+        const capabilities = req.body?.capabilities;
+
+        if (
+            capabilities !== undefined &&
+            (!Array.isArray(capabilities) ||
+             capabilities.some((item) => typeof item !== 'string' || !item.trim()))
+        ) {
+            return res.status(400).json({
+                success: false,
+                error: 'INVALID_CAPABILITIES'
+            });
+        }
+
+        const task = await taskQueue.claimNext(workerId, {
+            capabilities
+        });
+
+        return res.json({
+            success: true,
+            task
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/tasks/:taskId/ack', async (req, res, next) => {
+    try {
+        const authorization = req.headers.authorization || '';
+        const [scheme, token] = authorization.split(' ');
+        const workerId = req.body?.workerId;
+
+        if (
+            !workerId ||
+            scheme !== 'Bearer' ||
+            !authenticateWorkerToken(workerId, token)
+        ) {
+            return res.status(403).json({
+                success: false,
+                error: 'INVALID_WORKER_TOKEN'
+            });
+        }
+
+        const task = await taskQueue.acknowledge(
+            req.params.taskId,
+            workerId,
+            req.body?.result ?? null
+        );
+
+        return res.json({
+            success: true,
+            task
+        });
+    } catch (error) {
+        const status = error.message === 'Task not found' ? 404 : 409;
+
+        return res.status(status).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+router.post('/tasks/:taskId/fail', async (req, res, next) => {
+    try {
+        const authorization = req.headers.authorization || '';
+        const [scheme, token] = authorization.split(' ');
+        const workerId = req.body?.workerId;
+
+        if (
+            !workerId ||
+            scheme !== 'Bearer' ||
+            !authenticateWorkerToken(workerId, token)
+        ) {
+            return res.status(403).json({
+                success: false,
+                error: 'INVALID_WORKER_TOKEN'
+            });
+        }
+
+        const task = await taskQueue.fail(
+            req.params.taskId,
+            workerId,
+            req.body?.error ?? 'Worker reported task failure',
+            { retryDelayMs: req.body?.retryDelayMs ?? 0 }
+        );
+
+        return res.json({
+            success: true,
+            task
+        });
+    } catch (error) {
+        const status = error.message === 'Task not found' ? 404 : 409;
+
+        return res.status(status).json({
+            success: false,
+            error: error.message
+        });
+    }
 });
 
 export default router;

@@ -10,6 +10,7 @@ import { startHealthMonitor, stopHealthMonitor } from './services/health-monitor
 import workerRoutes from './routes/workers.js';
 import balancerRoutes from './routes/balancer.js';
 import agentRoutes from './routes/agent.js';
+import taskRoutes from './routes/tasks.js';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/agent', agentRoutes);
 app.use('/api', authenticate);
 app.use('/api/workers', workerRoutes);
 app.use('/api/balancer', balancerRoutes);
+app.use('/api/tasks', taskRoutes);
 
 app.use((req, res) => {
     res.status(404).json({
